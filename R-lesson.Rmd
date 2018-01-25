@@ -1,0 +1,506 @@
+---
+title: 'Data Manipulation with R: Soil pore data'
+author: "Edward Wallace"
+date: "1/24/2018"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Why use R for data science?
+
+We need to interpret and understand our data. To do this, we need to import, tidy, transform, visualize, and model data.
+
+R makes this all *efficient*, *flexible*, and *reproducible*. With practice, you can not only make common things happen fast and knowing exactly what has happened, but you can access a wide variety of powerful tools to visualize and model your data. For free.
+
+## Great resources on web and print
+
+Data Carpentry: http://www.datacarpentry.org/R-ecology-lesson/
+
+R for Data Science, Garrett Grolemund and Hadley Wickham: http://r4ds.had.co.nz/
+
+Fundamentals of Data Visualization, Claus Wilke: http://serialmentor.com/dataviz/
+
+Stack Overflow: https://stackoverflow.com/questions/tagged/r
+
+Look for your local R meetup: https://www.meetup.com/LondonR/
+
+
+# Description of Soil Pore dataset 
+
+We (Amin Garbout) have CT-scanned the same soil, before rain (br), after rain (ar) and after a drying phase (ad).
+
+We separated pores into 2 main categories:
+
+  _cross : are pores that permit the drainages as they connect the soil surface to the below ground of the soil
+  _unc :  are pores not connected to surface, they do not play a major role in water transport but have importance for soil structure
+ 
+
+We measured key parameters from CT images:
+
+  ID : pore id
+  Vol : Volume (mm$^3$) of the pore
+  x.Cent, y.Cent, z. Cent : centre of the pore in x, y, z co-ordinates (mm)
+  Thickness, SD.Thickness, Max.Thickness : Mean, SD, Max thickness/ diameter of the pore (mm)
+  SA : Surface area of the pore (mm) 
+
+
+# Start: examples of base R functions
+
+R can do arithmetic, and store many kinds of data: numbers, strings, and more.
+
+```{r starting_examples}
+1+1
+my_number = 1000
+my_subject = "stomata"
+
+my_number
+str(my_number)
+str(my_subject)
+
+```
+
+## How to ask for Help
+
+Importantly, you can ask for help using a question mark
+
+```{r help}
+?str
+
+?base
+```
+
+Starting to type a command and pressing the tab key for suggestions is also a good idea.
+
+# Many helpful collections of R functions are in packages
+
+We're going to use the package "tidyverse"
+
+```{r packages}
+# install.packages("tidyverse")
+library(tidyverse)
+```
+
+This loads  sub-packages for importing (readr), tidying (tibble), transforming (tidyr), and visualizing (ggplot2) data.
+
+# Load data for before-rain cross.
+
+We load the data with read_csv, which makes a "tibble". A tibble is a nicer version of the base-R "data frame" that holds many kinds of data in columns, where each row is one observation. This is like a more structured version of an excel table
+
+```{r load_br_cross}
+br_122_cross <- read_csv("data/br_122_cross.csv")
+?read_csv
+br_122_cross
+```
+
+## Examine it
+
+Number of rows, structure, names, extract a single column.
+
+```{r examine_br_cross}
+
+nrow(br_122_cross)
+str(br_122_cross)
+names(br_122_cross)
+br_122_cross$X1
+```
+
+Note that str gives too much information.
+
+## Some of these columns look redundant, are they exactly the same?
+
+```{r check_equal}
+all.equal(br_122_cross$X1,br_122_cross$X.x)
+all.equal(br_122_cross$X1,br_122_cross$X.x)
+```
+
+## Choose nicer column names and reload
+
+We pick names. Then use set_names to set those. Last we "select" to remove the redundant columns.
+
+```{r reload_br_cross}
+pore_col_names <- c("ID","ID1","Source","ID2","Vol",
+           "x.Cent","y.Cent","z.Cent",
+           "Thickness","SD.Thickness","Max.Thickness","SA")
+
+read_csv("data/br_122_cross.csv") %>%
+    set_names(pore_col_names)
+
+br_122_cross <- read_csv("data/br_122_cross.csv") %>%
+    set_names(pore_col_names) %>%
+    select("ID","Source","Vol","x.Cent","y.Cent","z.Cent",
+           "Thickness","SD.Thickness","Max.Thickness","SA")
+br_122_cross
+```
+
+## Summarize every column of the data
+
+```{r summary_br_cross}
+summary(br_122_cross)
+```
+
+# Tables are hard to understand: start visualizing
+
+## Visualize x-and y-positions of pores
+
+ggplot (for grammar of graphics plot) is a powerful structured way of plotting data. You need data in a tibble or data frame. Then you choose aesthetics, which are a way of mapping columns to plot features (position, size, colour, ...), and a geom which specifies how to do the mapping.
+
+```{r xy_pos_br_cross}
+ggplot(data=br_122_cross,aes(x=x.Cent,y=y.Cent)) +
+    geom_point()
+```
+
+## Exercise: Visualize x- and z-positions
+
+```{r xz_pos_br_cross,eval=FALSE,echo=FALSE}
+ggplot(data=br_122_cross,aes(x=x.Cent,y=z.Cent)) +
+    geom_point()
+```
+
+## Visualize Volume as size and and x- and y-position
+
+```{r xy_pos_vol_br_cross}
+ggplot(data=br_122_cross,aes(x=x.Cent,y=y.Cent,size=Vol)) +
+    geom_point()
+```
+
+
+## Filter the data to consider outlying point separately
+
+Filter is the verb to access a defined subset of the data.
+
+```{r filter_y_cent_br_cross}
+br_122_cross %>%
+    filter(y.Cent < 9)
+
+br_122_cross %>%
+    filter(y.Cent > 9) 
+
+ggplot(data=br_122_cross %>%
+    filter(y.Cent > 9),
+    aes(x=x.Cent,y=y.Cent,size=Vol)) +
+    geom_point()
+
+```
+
+## Exercise: Load After Rain, cross, and visualize position-volume relation
+
+From file "ar_122_cross.csv"
+
+```{r load_ar_cross,eval=FALSE,echo=FALSE}
+ar_122_cross <- read_csv("data/ar_122_cross.csv") %>%
+    set_names(pore_col_names)
+ar_122_cross
+```
+
+```{r xy_pos_vol_ar_cross,eval=FALSE,echo=FALSE}
+ggplot(data=ar_122_cross,
+    aes(x=x.Cent,y=y.Cent,size=Vol)) +
+    geom_point()
+```
+
+# Put things you do again and again into functions
+
+If we want to load multiple datasets in a very similar way, we can:
+
+  - Copy and paste the same code with minor adjustments
+  - Write a function
+
+Writing functions is less error-prone and takes up less space. We've "chunked" - made a complicated task into a simple sub-task.
+
+## Load pore data function
+
+Mutate creates new or changed columns in a tibble. Here we use it to include the Soil and Pore category
+
+```{r load_pore_data}
+load_pore_data <- function(File,Soil,Cat) {
+    read_csv(File) %>%
+        set_names(pore_col_names) %>%
+        mutate(Soil=Soil,Cat=Cat)
+}
+
+br_122_unc <- load_pore_data("data/br_122_unc.csv","br","unc")
+```
+
+## Now can we load all the soil conditions and pore categories?
+
+Yes. With three pore types, and two pore categories, we can make a small tibble keeping track of all of those and the filenames (wiht mutate). 
+
+```{r combinations}
+soil_types <- c("br","ar","ad")
+pore_cats <- c("cross","unc")
+
+crossing(Soil=soil_types,Cat=pore_cats)
+
+combinations <- crossing(Soil=soil_types,Cat=pore_cats) %>%
+    mutate(File=paste0("data/",Soil,"_122_",Cat,".csv"))
+
+combinations
+
+```
+
+
+# Use group_by and do to load all data
+
+"group_by" tells our tibble we'd like it broken up a certain way.
+
+"do" applies an arbitrary function to the output
+
+Note: The syntax is a challenge. After a "pipe" (%>%) then the dot "." is used to refer to the thing, or grouped thing, that is fed in to the function.
+
+```{r groups_do}
+combinations %>%
+    group_by(Cat,Soil)
+
+pores_data <- 
+    combinations %>%
+    group_by(Cat,Soil) %>%
+    do(load_pore_data(File=.$File,Cat=.$Cat,Soil=.$Soil))
+
+```
+
+
+## Summarize the data by group
+
+Summarize is a simpler version of do for functions that return single values, not tibbles.
+
+```{r summarize_pores_data}
+groups(pores_data)
+
+pores_data %>%
+    group_by(Cat,Soil) %>%
+    summarize(Vol.mean=mean(Vol),SA.mean=mean(SA),
+              Thickness.mean=mean(Thickness))
+
+```
+
+Here we see that there are differences in thickness between soils. We will shortly return to visualize that.
+
+## Write the cleaned, assembled data
+
+Yes, there are functions for writing data, too, making it easier to return to.
+
+```{r write_cleaned}
+write_csv(pores_data,"data/pores_data_122.csv")
+```
+
+### Load data afresh from here if needed
+
+```{r reread_cleaned,eval=FALSE}
+pores_data <- read_csv("data/pores_data_122.csv")
+```
+
+
+# Visualize differences between soil conditions
+
+## Histogram of Thickness for all cross pores
+
+```{r Thickness_histogram}
+ggplot(data=pores_data %>% 
+           filter(Cat=="cross"),
+       aes(x=Thickness)) +
+      geom_histogram()
+```
+
+## Plot same data as a density curve
+
+```{r Thickness_density}
+ggplot(data=pores_data %>% 
+           filter(Cat=="cross"),
+       aes(x=Thickness)) +
+      geom_density()
+```
+
+
+## Difference in pore thickness distribution by Soil
+
+```{r Thickness_density_bySoil}
+ggplot(data=pores_data %>% 
+           filter(Cat=="cross"),
+       aes(x=Thickness,colour=Soil)) +
+      geom_density()
+```
+
+## Exercise: does Thickness vary with soil type for uncrossed pores?
+
+```{r Thickness_density_bySoil_unc,eval=FALSE,echo=FALSE}
+ggplot(data=pores_data %>% 
+           filter(Cat=="unc"),
+       aes(x=Thickness,colour=Soil)) +
+      geom_density()
+```
+
+## Exercise: does that look better as a histogram?
+
+```{r Thickness_density_bySoil_unc_limits,eval=FALSE,echo=FALSE}
+ggplot(data=pores_data %>% 
+           filter(Cat=="unc"),
+       aes(x=Thickness,fill=Soil)) +
+      geom_histogram() + 
+    scale_x_continuous(limits=c(0,0.3))
+```
+
+# More on relationships between pairs of variables
+
+## How are Volume and Surface Area related?
+
+```{r Vol_SA}
+ggplot(data=pores_data %>% 
+           filter(Cat=="cross"),
+       aes(x=SA,y=Vol)) +
+    geom_point()
+```
+
+### Change to log-scales
+
+```{r Vol_SA_loglog}
+ggplot(data=pores_data %>% 
+           filter(Cat=="cross"),
+       aes(x=SA,y=Vol)) +
+    geom_point() +
+    scale_x_log10() + 
+    scale_y_log10()
+```
+
+
+## Exercise: are Thickness and SA related by soil type?
+
+```{r Vol_SA_loglog_soil,eval=FALSE,echo=FALSE}
+ggplot(data=pores_data %>% 
+           filter(Cat=="cross"),
+       aes(x=Thickness,y=SA,colour=Soil)) +
+    geom_point() +
+    scale_x_log10() + 
+    scale_y_log10()
+```
+
+
+## How could we summarize this relation?
+
+introducing stat_smooth, a statistical summary of the data
+
+```{r Vol_SA_loglog_smooth}
+ggplot(data=pores_data %>% 
+           filter(Cat=="cross"),
+       aes(x=SA,y=Thickness,colour=Soil)) +
+       geom_point() + 
+    stat_smooth() +
+    scale_x_log10() + 
+    scale_y_log10() 
+```
+
+stat_smooth automatically uses a local smoothing method called loess.
+
+## Summarize dependencies visually with a linear model
+
+```{r Vol_SA_loglog_linear}
+ggplot(data=pores_data %>% 
+           filter(Cat=="cross"),
+       aes(x=SA,y=Thickness,colour=Soil)) +
+    geom_point() + 
+    stat_smooth(method="lm",se=FALSE) +
+    scale_x_log10() + 
+    scale_y_log10() 
+```
+
+## Exercise: What about in uncrossed pores?
+
+```{r Vol_SA_loglog_unc,eval=FALSE,echo=FALSE}
+ggplot(data=pores_data %>% 
+           filter(Cat=="unc"),
+       aes(x=SA,y=Thickness,colour=Soil)) +
+    geom_point() + 
+    stat_smooth(method="lm",se=FALSE) +
+    scale_x_log10() + 
+    scale_y_log10() 
+```
+
+
+## Use facet_wrap to plot unc separately from crossed
+
+facet_wrap allows breaking the data into separate panels
+
+```{r Vol_SA_loglog_facet}
+ggplot(data=pores_data,
+       aes(x=SA,y=Thickness,colour=Soil)) +
+    # geom_point() + 
+    stat_smooth(method="lm",se=FALSE) +
+    scale_x_log10() + 
+    scale_y_log10() +
+    facet_wrap(~Cat)
+```
+
+# What are the slopes of these lines? Use linear model(lm)
+
+This is made hard by many steps involved.
+
+## Sub-exercise: use a linear model to estimate relationship in one dataset
+
+Note that the interesting correlation is with log10(SA); but in that case you have to remove the invalid values (log(0) = -Inf) to get the lm function to work.
+
+```{r linear_model, eval=FALSE,echo=FALSE}
+lm( data =  pores_data %>% 
+        filter(Cat=="cross",Soil=="br",Thickness > 0, SA > 0 ),
+ formula = log10(Thickness) ~ log10(SA))
+
+```
+
+## Use the broom package to tidy this output and wrap in a function
+
+The broom package makes the outputs of linear models and so on into tidy tibbles.
+
+```{r linear_model_function}
+library(broom)
+
+lm( data =  pores_data %>% 
+        filter(Thickness > 0, SA > 0 ),
+    formula = log10(Thickness) ~ log10(SA)) %>%
+    tidy() 
+
+lm_ThicknessSA <- function(sub_data) {
+    lm( data =  sub_data %>% 
+            filter(Thickness > 0, SA > 0 ),
+        formula = log10(Thickness) ~ log10(SA)) %>%
+    tidy() 
+}
+
+lm_ThicknessSA(pores_data)
+```
+
+### Sub-Exercise: use group_by and summarize to get the slopes of these lines.
+
+```{r linear_model_function_group,echo=FALSE,eval=FALSE}
+pores_data %>%
+    group_by(Cat,Soil) %>%
+    do(lm_ThicknessSA(.)) %>%
+    filter(term=="log10(SA)") %>%
+    select(Cat,Soil,estimate)
+```
+
+
+### Exercise: use "breaks" so that the scale labels are informative, and "theme_bw" to change the appearance of the plot
+
+```{r informative_breaks,eval=FALSE,echo=FALSE}
+ggplot(data=pores_data %>% 
+           filter(Cat=="unc"),
+       aes(x=SA,y=Thickness,colour=Soil)) +
+    # geom_point() + 
+    stat_smooth(method="lm",se=FALSE) +
+    scale_x_log10() + 
+    scale_y_log10(breaks=c(0.05,0.06,0.08,0.09,0.1,0.2,0.3,0.4,0.5)) +
+    theme_bw() +
+    theme(panel.grid.minor=element_blank())
+```
+
+
+## Some important topics we didn't cover
+
+Other plots: lines (geom_line), boxplots (geom_boxplot), heatmaps (geom_tile), 2-d density plots (geom_hex), ...
+
+Missing data: NA, na.omit, and so on.
+
+Modeling: linear regression, clustering, etc.
+
+All this and more can be done in R!
+
