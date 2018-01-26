@@ -1,6 +1,6 @@
 ---
 title: 'Data Manipulation with R: Soil pore data'
-author: "Edward Wallace"
+author: "Edward Wallace, ewjwallace@gmail.com"
 date: "1/24/2018"
 output:
   html_document:
@@ -89,7 +89,7 @@ This loads  sub-packages for importing (readr), tidying (tibble), transforming (
 We load the data with read_csv, which makes a "tibble". A tibble is a nicer version of the base-R "data frame" that holds many kinds of data in columns, where each row is one observation. This is like a more structured version of an excel table
 
 ```{r load_br_cross}
-br_122_cross <- read_csv("data/br_122_cross.csv")
+br_122_cross = read_csv("data/br_122_cross.csv")
 ?read_csv
 br_122_cross
 ```
@@ -117,24 +117,62 @@ all.equal(br_122_cross$X1,br_122_cross$X.x)
 
 ## Choose nicer column names and reload
 
-We pick names. Then use set_names to set those. Last we "select" to remove the redundant columns.
+We pick names. Then use set_names to set those. 
+
+```{r rename_br_cross}
+pore_col_names = c("ID","ID1","Source","ID2","Vol",
+           "x.Cent","y.Cent","z.Cent",
+           "Thickness","SD.Thickness","Max.Thickness","SA")
+br_122_cross_renamed <- 
+    set_names(br_122_cross,pore_col_names)
+
+br_122_cross_renamed
+```
+
+### Select only some (non-redundant) columns
+
+We select some columns we want. Or select to remove some columns.
+
+```{r select_br_cross}
+
+select(br_122_cross_renamed,ID,Source,Vol,Thickness)
+
+select(br_122_cross_renamed,-ID1,-ID2)
+
+```
+
+
+### Pipe to remove redundant columns.
+
+So far we've applied one function at a time and created a new tibble every time. This results in many objects that it's hard to keep track of, and code that is hard to follow and maintain. 
+
+The pipe operator %>% takes the output of the function before, and supplies it in place of the first argument to the next function. This makes it easier to chain many functions together and read your code.
 
 ```{r reload_br_cross}
-pore_col_names <- c("ID","ID1","Source","ID2","Vol",
+pore_col_names = c("ID","ID1","Source","ID2","Vol",
            "x.Cent","y.Cent","z.Cent",
            "Thickness","SD.Thickness","Max.Thickness","SA")
 
 read_csv("data/br_122_cross.csv") %>%
     set_names(pore_col_names)
 
-br_122_cross <- read_csv("data/br_122_cross.csv") %>%
+br_122_cross = read_csv("data/br_122_cross.csv") %>%
     set_names(pore_col_names) %>%
-    select("ID","Source","Vol","x.Cent","y.Cent","z.Cent",
-           "Thickness","SD.Thickness","Max.Thickness","SA")
+    select(-ID1,-ID2)
 br_122_cross
 ```
 
-## Summarize every column of the data
+### Filter observations 
+
+Filter lets us to choose rows with some feature that we want: for example, pores with non-zero thickness.
+
+```{r filter_br_cross}
+br_122_cross_renamed %>%
+    select(ID,Vol,Thickness) %>%
+    filter(Thickness > 0)
+```
+
+## Summary of every column of the data
 
 ```{r summary_br_cross}
 summary(br_122_cross)
@@ -166,9 +204,9 @@ ggplot(data=br_122_cross,aes(x=x.Cent,y=y.Cent,size=Vol)) +
 ```
 
 
-## Filter the data to consider outlying point separately
+## Consider outlying point separately
 
-Filter is the verb to access a defined subset of the data.
+Reminder, filter accesses defined rows of the data.
 
 ```{r filter_y_cent_br_cross}
 br_122_cross %>%
@@ -189,7 +227,7 @@ ggplot(data=br_122_cross %>%
 From file "ar_122_cross.csv"
 
 ```{r load_ar_cross,eval=FALSE,echo=FALSE}
-ar_122_cross <- read_csv("data/ar_122_cross.csv") %>%
+ar_122_cross = read_csv("data/ar_122_cross.csv") %>%
     set_names(pore_col_names)
 ar_122_cross
 ```
@@ -214,13 +252,13 @@ Writing functions is less error-prone and takes up less space. We've "chunked" -
 Mutate creates new or changed columns in a tibble. Here we use it to include the Soil and Pore category
 
 ```{r load_pore_data}
-load_pore_data <- function(File,Soil,Cat) {
+load_pore_data = function(File,Soil,Cat) {
     read_csv(File) %>%
         set_names(pore_col_names) %>%
         mutate(Soil=Soil,Cat=Cat)
 }
 
-br_122_unc <- load_pore_data("data/br_122_unc.csv","br","unc")
+br_122_unc = load_pore_data("data/br_122_unc.csv","br","unc")
 ```
 
 ## Now can we load all the soil conditions and pore categories?
@@ -228,12 +266,12 @@ br_122_unc <- load_pore_data("data/br_122_unc.csv","br","unc")
 Yes. With three pore types, and two pore categories, we can make a small tibble keeping track of all of those and the filenames (wiht mutate). 
 
 ```{r combinations}
-soil_types <- c("br","ar","ad")
-pore_cats <- c("cross","unc")
+soil_types = c("br","ar","ad")
+pore_cats = c("cross","unc")
 
 crossing(Soil=soil_types,Cat=pore_cats)
 
-combinations <- crossing(Soil=soil_types,Cat=pore_cats) %>%
+combinations = crossing(Soil=soil_types,Cat=pore_cats) %>%
     mutate(File=paste0("data/",Soil,"_122_",Cat,".csv"))
 
 combinations
@@ -253,7 +291,7 @@ Note: The syntax is a challenge. After a "pipe" (%>%) then the dot "." is used t
 combinations %>%
     group_by(Cat,Soil)
 
-pores_data <- 
+pores_data = 
     combinations %>%
     group_by(Cat,Soil) %>%
     do(load_pore_data(File=.$File,Cat=.$Cat,Soil=.$Soil))
@@ -288,13 +326,15 @@ write_csv(pores_data,"data/pores_data_122.csv")
 ### Load data afresh from here if needed
 
 ```{r reread_cleaned,eval=FALSE}
-pores_data <- read_csv("data/pores_data_122.csv")
+pores_data = read_csv("data/pores_data_122.csv")
 ```
 
 
 # Visualize differences between soil conditions
 
 ## Histogram of Thickness for all cross pores
+
+Here we filter by equality. Double equals "==" tests for equality, different from single equals.
 
 ```{r Thickness_histogram}
 ggplot(data=pores_data %>% 
@@ -339,6 +379,19 @@ ggplot(data=pores_data %>%
        aes(x=Thickness,fill=Soil)) +
       geom_histogram() + 
     scale_x_continuous(limits=c(0,0.3))
+```
+
+
+## Example: other features that let us produce high-quality plots
+
+```{r Thickness_density_bySoil_nice}
+ggplot(data=pores_data %>% filter(Cat=="unc"),
+       aes(x=Thickness,fill=Soil)) + 
+    geom_histogram(position="dodge") +
+    theme_bw(base_size = 24) +
+    theme(panel.border=element_blank()) +
+    scale_x_log10() +
+    scale_fill_manual(values=c(br="skyblue",ar="black",ad="red"))
 ```
 
 # More on relationships between pairs of variables
@@ -431,6 +484,15 @@ ggplot(data=pores_data,
     facet_wrap(~Cat)
 ```
 
+## Use linetype aesthetic to see lines on same axes
+
+```{r Vol_SA_loglog_linetype}
+ggplot(data=pores_data,
+       aes(x=Thickness,y=SA,colour=Soil,linetype=Cat)) + 
+    stat_smooth(method="lm",se=FALSE) +
+    scale_y_log10()
+```
+
 # What are the slopes of these lines? Use linear model(lm)
 
 This is made hard by many steps involved.
@@ -458,7 +520,7 @@ lm( data =  pores_data %>%
     formula = log10(Thickness) ~ log10(SA)) %>%
     tidy() 
 
-lm_ThicknessSA <- function(sub_data) {
+lm_ThicknessSA = function(sub_data) {
     lm( data =  sub_data %>% 
             filter(Thickness > 0, SA > 0 ),
         formula = log10(Thickness) ~ log10(SA)) %>%
@@ -495,6 +557,8 @@ ggplot(data=pores_data %>%
 
 
 ## Some important topics we didn't cover
+
+Readxl: R can directly read excel spreadsheets and some other kinds of data.
 
 Other plots: lines (geom_line), boxplots (geom_boxplot), heatmaps (geom_tile), 2-d density plots (geom_hex), ...
 
